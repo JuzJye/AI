@@ -4,6 +4,7 @@ import torch.nn.functional as F
 from torchvision import datasets, transforms
 from torch.utils.data import DataLoader
 from utils import *
+import time
 
 # 设置初始化种子数和设备
 set_seed(42)
@@ -77,6 +78,7 @@ val_losses = []
 train_accs = []
 val_accs = []
 
+time1 = time.time()
 for epoch in range(epochs):
     train_loss, train_acc = train_one_epoch(
         model,
@@ -95,14 +97,16 @@ for epoch in range(epochs):
     train_accs.append(train_acc)
     val_losses.append(val_loss)
     val_accs.append(val_acc)
+time = time.time() - time1
+print("time:",time)
 
 # 可视化
-# plot_curves(
-#     train_losses,
-#     val_losses,
-#     train_accs,
-#     val_accs
-# )
+plot_curves(
+    train_losses,
+    val_losses,
+    train_accs,
+    val_accs
+)
 
 # 保存模型
 save_model(model)
