@@ -5,7 +5,7 @@ from torchvision import datasets, transforms
 from torch.utils.data import DataLoader
 
 # 设备
-device = torch.device("mps" if torch.backends.mps.is_available() else "cpu")
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print("device:",device)
 
 # 数据处理部分
@@ -62,6 +62,8 @@ class CNN(nn.Module):
         return x
 
 model = CNN().to(device)
+from torchsummary import summary
+print(summary(model=model, input_size=(3,32,32),batch_size=64))
 criterion = nn.CrossEntropyLoss()
 optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
 for epoch in range(10):
