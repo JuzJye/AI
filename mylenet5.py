@@ -116,10 +116,10 @@ if __name__ == "__main__":
         train_losses,
         val_losses,
         train_accs,
-        val_accs,
-        fig_name="lenet5_result"
+        val_accs
     )
-   
+    plt.savefig("lenet5_result.png")
+    plt.close()
 
     # 保存模型
     save_model(model)
