@@ -5,7 +5,7 @@ from torchvision import datasets, transforms
 from torch.utils.data import DataLoader
 from utils import *
 
-class VGG(nn.Module):
+class LeNet(nn.Module):
     def __init__(self):
         super().__init__()
         self.backbone = BackBone()
@@ -44,7 +44,7 @@ if __name__ == "__main__":
     # 设备
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print("device:", device)
-    batch_size = 32
+    batch_size = 64
     set_seed(42)
     # 数据处理部分
     transform = transforms.Compose([
@@ -78,7 +78,7 @@ if __name__ == "__main__":
         shuffle=False
     )
     # 模型搭建
-    model = VGG().to(device=device)
+    model = LeNet().to(device=device)
     from torchsummary import summary
     # 增加 device=device.type 参数
     print(summary(model=model, input_size=(1,28,28), 
@@ -116,8 +116,10 @@ if __name__ == "__main__":
         train_losses,
         val_losses,
         train_accs,
-        val_accs
+        val_accs,
+        fig_name="lenet5_result"
     )
+   
 
     # 保存模型
     save_model(model)

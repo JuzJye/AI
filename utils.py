@@ -100,3 +100,4 @@ def plot_curves(train_losses, val_losses, train_accs, val_accs):
 
     plt.tight_layout()
     plt.show()
+    
