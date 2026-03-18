@@ -109,8 +109,8 @@ if __name__ == "__main__":
     val_accs = []
     best_val_accuracy = 0.0
     best_val_loss = float('inf')
-    train_path = Path("../flower_photos/train") # 为了健壮性这么写 不然macOS直接写路径就行
-    test_path = Path("../flower_photos/test")
+    train_path = Path("./flower_photos/train") # 为了健壮性这么写 不然macOS直接写路径就行
+    test_path = Path("./flower_photos/test")
     print("device:",device)
     print("参数设置完毕，训练开始^^")
 
