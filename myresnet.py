@@ -191,7 +191,7 @@ if __name__ == "__main__":
     device = torch.device("cuda" if torch.cuda.is_available() else "mps")
     batch_size = 16
     num_classes = 25
-    epochs = 60
+    epochs = 10
     init_lr = 1e-3
     current_lr = init_lr
     isLoad = False
