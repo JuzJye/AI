@@ -189,10 +189,10 @@ if __name__ == "__main__":
 
     # 参数设置
     device = torch.device("cuda" if torch.cuda.is_available() else "mps")
-    batch_size = 8
-    num_classes = 26
-    epochs = 35
-    init_lr = 1e-5
+    batch_size = 32
+    num_classes = 25
+    epochs = 60
+    init_lr = 1e-3
     current_lr = init_lr
     isLoad = False
     isWeight = False
@@ -205,8 +205,8 @@ if __name__ == "__main__":
     best_val_loss = float('inf')
 
     # 修改数据集路径
-    train_path = Path("./Vegetable Detection/train") # 为了健壮性这么写 不然macOS直接写路径就行
-    test_path = Path("./Vegetable Detection/test")
+    train_path = Path("./Vegetable_Detection/train") # 为了健壮性这么写 不然macOS直接写路径就行
+    test_path = Path("./Vegetable_Detection/test")
     print("device:",device)
     print("参数设置完毕，训练开始^^")
 
@@ -259,11 +259,17 @@ if __name__ == "__main__":
     # 开始训练
     model = ResNet(BasicBlock, [3, 4, 6, 3], num_classes=num_classes, include_top=True).to(device)
     # print(model)
-    # 根据不同类别的训练数据个数，给一个权重系数（即”类别平衡“），也可以不加
+    # 根据不同类别的训练数据个数，给一个权重系数（即”类别平衡“）
     # 多的数据 系数小一点，少的数据 系数大一点 
     if isWeight:
-        class_weights = torch.ones(num_classes).float()
-        criterion = nn.CrossEntropyLoss(weight=class_weights.to(device=device))
+        class_weights = torch.tensor(
+          [0.2211, 0.1937, 0.1423, 0.1029, 0.1276, 0.1348,
+           1.2783, 1.1878, 1.8510, 1.5577, 2.0960, 1.7928,
+           0.9762, 0.8964, 1.1494, 0.8936, 0.9830, 0.6660,
+           0.4339, 0.9566, 0.8691, 2.9694, 1.9659, 0.1431, 1.4112],
+          dtype=torch.float32
+      )
+        criterion = nn.CrossEntropyLoss(weight=class_weights.to(device))
     else:
         criterion = nn.CrossEntropyLoss()
 
