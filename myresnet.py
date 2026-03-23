@@ -189,7 +189,7 @@ if __name__ == "__main__":
 
     # 参数设置
     device = torch.device("cuda" if torch.cuda.is_available() else "mps")
-    batch_size = 16
+    batch_size = 128
     num_classes = 25
     epochs = 10
     init_lr = 1e-3
@@ -247,13 +247,17 @@ if __name__ == "__main__":
     train_dataloader = DataLoader(
         dataset=train_dataset,
         batch_size=batch_size,
-        shuffle=True
+        shuffle=True,
+        num_workers=8,           # 新增：开启 8 个子进程加载数据
+        pin_memory=True          # 新增：加速数据转移到显卡
     )
 
     val_dataloader = DataLoader(
         dataset=val_dataset,
         batch_size=batch_size,
-        shuffle=False
+        shuffle=False,
+        num_workers=8,           # 新增
+        pin_memory=True          # 新增
     )
 
     # 开始训练
