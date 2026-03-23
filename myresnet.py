@@ -92,9 +92,9 @@ class ResNet(nn.Module):
         self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
         # 构建四个残差层，分别对应resnet的四个stage，每个stage的残差块个数为blocks_num[i]
         self.layer1 = self._make_layer(block, self.in_channels, blocks_num[0])
-        self.layer2 = self._make_layer(block, self.in_channels*2, blocks_num[1], stride=2)
-        self.layer3 = self._make_layer(block, self.in_channels*4, blocks_num[2], stride=2)
-        self.layer4 = self._make_layer(block, self.in_channels*8, blocks_num[3], stride=2)
+        self.layer2 = self._make_layer(block, 128, blocks_num[1], stride=2)
+        self.layer3 = self._make_layer(block, 256, blocks_num[2], stride=2)
+        self.layer4 = self._make_layer(block, 512, blocks_num[3], stride=2)
         if self.include_top:
             self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
             self.fc = nn.Linear(self.in_channels, num_classes)  # 这里的in_channels已经更新过了
@@ -189,7 +189,7 @@ if __name__ == "__main__":
 
     # 参数设置
     device = torch.device("cuda" if torch.cuda.is_available() else "mps")
-    batch_size = 32
+    batch_size = 16
     num_classes = 25
     epochs = 60
     init_lr = 1e-3
