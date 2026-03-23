@@ -189,13 +189,13 @@ if __name__ == "__main__":
 
     # 参数设置
     device = torch.device("cuda" if torch.cuda.is_available() else "mps")
-    batch_size = 128
+    batch_size = 256
     num_classes = 25
-    epochs = 10
+    epochs = 80
     init_lr = 1e-3
     current_lr = init_lr
     isLoad = False
-    isWeight = False
+    isWeight = True
 
     train_losses = []
     train_accs = []
@@ -248,7 +248,7 @@ if __name__ == "__main__":
         dataset=train_dataset,
         batch_size=batch_size,
         shuffle=True,
-        num_workers=8,           # 新增：开启 8 个子进程加载数据
+        num_workers=16,           # 新增：开启 16 个子进程加载数据
         pin_memory=True          # 新增：加速数据转移到显卡
     )
 
@@ -256,7 +256,7 @@ if __name__ == "__main__":
         dataset=val_dataset,
         batch_size=batch_size,
         shuffle=False,
-        num_workers=8,           # 新增
+        num_workers=16,           # 新增
         pin_memory=True          # 新增
     )
 
@@ -266,19 +266,34 @@ if __name__ == "__main__":
     # 根据不同类别的训练数据个数，给一个权重系数（即”类别平衡“）
     # 多的数据 系数小一点，少的数据 系数大一点 
     if isWeight:
+        # 基于精准样本量计算，并对表现差的类别（10, 24, 16, 21等）进行了 2-3 倍的额外增益
         class_weights = torch.tensor(
-          [0.2211, 0.1937, 0.1423, 0.1029, 0.1276, 0.1348,
-           1.2783, 1.1878, 1.8510, 1.5577, 2.0960, 1.7928,
-           0.9762, 0.8964, 1.1494, 0.8936, 0.9830, 0.6660,
-           0.4339, 0.9566, 0.8691, 2.9694, 1.9659, 0.1431, 1.4112],
-          dtype=torch.float32
-      )
+            [0.5769, 0.5052, 0.3713, 0.2684, 0.3329, 0.3518, 3.3347, 3.0985, 4.8288, 4.0636, 
+             16.4038, # Class 10 (原20%Acc) -> 极大增强
+             4.6770, 2.5467, 2.3385, 
+             5.3974,  # Class 14
+             2.3312, 
+             5.1286,  # Class 16 (原44%Acc) -> 增强
+             1.7375, 1.1319, 2.4954, 
+             4.0810,  # Class 20
+             13.9433, # Class 21 (样本最少) -> 极大增强
+             9.2314,  # Class 22
+             0.3733, 
+             9.2035   # Class 24 (原30%Acc) -> 极大增强
+            ], dtype=torch.float32
+        )
         criterion = nn.CrossEntropyLoss(weight=class_weights.to(device))
     else:
         criterion = nn.CrossEntropyLoss()
 
     # 设置优化器
+    # 设置优化器
     optimizer = torch.optim.Adam(model.parameters(), lr=init_lr)
+
+    # --- 修改：换成余弦退火调度器 ---
+    # T_max 建议设为总 Epoch 数（比如 60 或 80）
+    # eta_min 是学习率降到的最低值，设为 1e-6 确保它不会变成 0
+    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=epochs, eta_min=1e-6)
 
     for epoch in range(epochs):
         model.train()
@@ -372,6 +387,12 @@ if __name__ == "__main__":
             }
             torch.save(checkpoint, 'best.pt')
             print(f"[*]Best validation accuracy updated: {best_val_accuracy:.2%}, best validation loss: {best_val_loss:.4f}")
+        
+        # --- 新增：更新学习率 ---
+        scheduler.step()
+        # 顺便打印一下当前的学习率，方便你监控
+        print(f"Epoch {epoch+1} finished. Current Learning Rate: {optimizer.param_groups[0]['lr']:.6f}")
+    
     # 可视化
     # 绘制训练和验证损失曲线
     plt.figure(figsize=(12,6))
@@ -396,26 +417,30 @@ if __name__ == "__main__":
     plt.savefig('resnet34_result.png')
     plt.show()
     plt.close()
+    
 
     # 可视化显示几个分类正确的图像和对应的标签
     # ---------------------------------------------------------
-    # 新增功能：随机可视化几张图像的真实标签与预测标签
+    # 新增功能：随机可视化 24 张图像的真实标签与预测标签
     # ---------------------------------------------------------
     print("开始随机提取验证集图像进行可视化...")
     
-    # 如果有保存的best模型，加载它（确保用的是训练中表现最好的权重）
+    # 加载表现最好的模型权重
     if os.path.exists('best.pt'):
-        model.load_state_dict(torch.load('best.pt')['model_state_dict'])
+        checkpoint = torch.load('best.pt')
+        model.load_state_dict(checkpoint['model_state_dict'])
+        print(f"成功加载最佳权重，当时验证集准确率: {checkpoint['best_val_accuracy']:.2%}")
+    
     model.eval()
 
-    # 1. 创建一个临时的 DataLoader，专门用于随机抽取 6 张图像
-    num_to_show = 6
+    # 1. 设置展示 24 张图片
+    num_to_show = 24
+    # 重新定义一个 batch 为 24 的 loader 用于展示
     vis_loader = DataLoader(dataset=val_dataset, batch_size=num_to_show, shuffle=True)
     
-    # 获取一个随机批次的数据
+    # 获取随机批次
     images, labels = next(iter(vis_loader))
     images = images.to(device)
-    # 将 one-hot 标签转换为索引
     true_labels = torch.argmax(labels.to(device), dim=1)
 
     # 2. 模型预测
@@ -423,31 +448,30 @@ if __name__ == "__main__":
         outputs = model(images)
         preds = torch.argmax(outputs, dim=1)
 
-    # 3. 定义反标准化的参数（必须与 my_transform 中的 Normalize 保持一致）
+    # 3. 反标准化参数
     mean = torch.tensor([0.485, 0.456, 0.406]).view(3, 1, 1).to(device)
     std = torch.tensor([0.229, 0.224, 0.225]).view(3, 1, 1).to(device)
 
-    # 4. 开始画图
-    plt.figure(figsize=(12, 8))
+    # 4. 绘图：设置 4 行 6 列
+    plt.figure(figsize=(20, 15)) # 调大画布尺寸，保证 24 张图清晰
     for i in range(num_to_show):
-        # 图像反标准化：img = img * std + mean
         img = images[i] * std + mean
-        img = torch.clamp(img, 0, 1)  # 限制在 [0, 1] 范围内防止溢出
-        img = img.cpu().permute(1, 2, 0).numpy()  # 转换通道从 (C,H,W) 到 (H,W,C)
+        img = torch.clamp(img, 0, 1)
+        img = img.cpu().permute(1, 2, 0).numpy()
 
         t_label = true_labels[i].item()
         p_label = preds[i].item()
 
-        ax = plt.subplot(2, 3, i + 1)
+        ax = plt.subplot(4, 6, i + 1) # 4x6 布局
         ax.imshow(img)
         
-        # 判断正误，正确用绿色，错误用红色
+        # 正确绿色，错误红色
         color = 'green' if t_label == p_label else 'red'
-        ax.set_title(f"True: {t_label} | Pred: {p_label}", color=color, fontweight='bold')
+        ax.set_title(f"T:{t_label} | P:{p_label}", color=color, fontsize=12, fontweight='bold')
         ax.axis('off')
 
     plt.tight_layout()
-    plt.savefig('random_predictions.png')
+    plt.savefig('random_predictions_24.png')
+    print("可视化完成！请查看 random_predictions_24.png")
     plt.show()
     plt.close()
-    print("可视化完成！请查看 random_predictions.png")
